@@ -38,6 +38,7 @@ namespace WebApiPIATienda.Utilidades
             CreateMap<Pedido, PedidoDTO>();
             CreateMap<Pedido, PedidoDTOConProductos>()
                 .ForMember(pedidoDTO => pedidoDTO.Productos, opciones => opciones.MapFrom(MapPedidoDTOProductos));
+            CreateMap<PedidoPatchDTO, Pedido>().ReverseMap();
             //CreateMap<ClasePatchDTO, Clase>().ReverseMap();
             //CreateMap<CursoCreacionDTO, Cursos>();
             //CreateMap<Cursos, CursoDTO>();
@@ -45,6 +46,7 @@ namespace WebApiPIATienda.Utilidades
             CreateMap<ProductoDTO, Producto>();
             CreateMap<Producto, GetProductoDTO>();
             CreateMap<ProductoPatchDTO, Producto>().ReverseMap();
+            CreateMap<Producto, ProductoImagenDTO>();
         }
 
         //private List<CarritoDTO> MapProductoDTOCarritos(Producto producto, GetProductoDTO getProductoDTO)
@@ -85,7 +87,8 @@ namespace WebApiPIATienda.Utilidades
                     Descripcion = carritoProducto.Producto.Descripcion,
                     Categoria = carritoProducto.Producto.Categoria,
                     Cantidad = carritoProducto.Cantidad,
-                    Subtotal = carritoProducto.Cantidad * carritoProducto.Producto.Precio
+                    Subtotal = carritoProducto.Cantidad * carritoProducto.Producto.Precio,
+                    ImagenURL = carritoProducto.Producto.ImagenURL
                 });
             }
 
@@ -132,18 +135,11 @@ namespace WebApiPIATienda.Utilidades
                     Categoria = pedidoProducto.Producto.Categoria,
                     Cantidad = pedidoProducto.Cantidad,
                     Subtotal = pedidoProducto.Cantidad * pedidoProducto.Producto.Precio,
-                    MetodoDePagoId = pedidoProducto.MetodoDePagoId,
-                    Tarjeta = pedidoProducto.MetodoDePago.Bin,
-                    Exp = pedidoProducto.MetodoDePago.Mes + "/" + pedidoProducto.MetodoDePago.Año,
-                    DireccionId = pedidoProducto.DireccionId,
-                    DireccionEnvio = pedidoProducto.Direccion.Calle 
-                    + " " + pedidoProducto.Direccion.NumExt 
-                    + ", " + pedidoProducto.Direccion.Colonia
-                    + ", C.P." + pedidoProducto.Direccion.CodigoPostal
-                    + ", " + pedidoProducto.Direccion.Ciudad
-                    + ", " + pedidoProducto.Direccion.Estado                
-                    + ", " + pedidoProducto.Direccion.Pais
-                });
+                    ImagenURL = pedidoProducto.Producto.ImagenURL
+                    //Tarjeta = pedidoProducto.Tarjeta,
+                    //Exp = pedidoProducto.Exp,
+                    //Direccion = pedidoProducto.Direccion
+                }); ;
             }
 
             return result;
@@ -162,22 +158,11 @@ namespace WebApiPIATienda.Utilidades
                     ProductoId = pedidoCreacionDTO.ProductosIds[i],
                     Cantidad = pedidoCreacionDTO.Cantidades[i],
                     Subtotal = pedidoCreacionDTO.Subtotales[i],
-                    DireccionId = pedidoCreacionDTO.DireccionId,
-                    MetodoDePagoId = pedidoCreacionDTO.MetodoDePagoId
+                    //DireccionId = pedidoCreacionDTO.DireccionId,
+                    //MetodoDePagoId = pedidoCreacionDTO.MetodoDePagoId
                 });
             }
             return resultado;
-        }
-
-        private void OrdenarPorProductos(Pedido pedido)
-        {
-            if (pedido.ProductosPedido != null)
-            {
-                for (int i = 0; i < pedido.ProductosPedido.Count; i++)
-                {
-                    pedido.ProductosPedido[i].Orden = i;
-                }
-            }
         }
     }
 }

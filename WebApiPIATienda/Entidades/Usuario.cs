@@ -22,7 +22,7 @@ namespace WebApiPIATienda.Entidades
         [PrimeraLetraMayuscula]
         public string Apellidos { get; set; }
 
-        [StringLength(maximumLength: 10, ErrorMessage = "El campo {0} solo puede tener hasta 10 caracteres")]
+        [StringLength(maximumLength: 10, ErrorMessage = "El campo {0} debe contener 10 caracteres", MinimumLength = 10)]
         [EsNumerico]
         public string? Telefono { get; set; }
         public DateTime? FechaCreacion { get; set; }

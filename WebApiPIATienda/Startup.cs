@@ -7,6 +7,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json.Serialization;
 using System.Text;
 using WebApiPIATienda.Filtros;
+using WebApiPIATienda.Middlewares;
+using WebApiPIATienda.Servicios;
 
 namespace WebApiPIATienda
 {
@@ -101,11 +103,14 @@ namespace WebApiPIATienda
                     //
                 });
             });
+
+            services.Configure<MailSettings>(Configuration.GetSection("MailSettings"));
+            services.AddTransient<IMailService, MailService>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ILogger<Startup> logger)
         {
-
+            app.UseResponseHttpMiddleware();
             //app.UseLoguearRespuestaHTTP();
             // Configure the HTTP request pipeline.
             if (env.IsDevelopment())

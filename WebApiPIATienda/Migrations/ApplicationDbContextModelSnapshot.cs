@@ -329,15 +329,21 @@ namespace WebApiPIATienda.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
 
-                    b.Property<int>("DireccionId")
-                        .HasColumnType("int");
+                    b.Property<string>("Direccion")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Estado")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("MetodoDePagoId")
-                        .HasColumnType("int");
+                    b.Property<string>("Exp")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Tarjeta")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<double>("Total")
                         .HasColumnType("float");
@@ -346,10 +352,6 @@ namespace WebApiPIATienda.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("DireccionId");
-
-                    b.HasIndex("MetodoDePagoId");
 
                     b.HasIndex("UsuarioId");
 
@@ -369,15 +371,22 @@ namespace WebApiPIATienda.Migrations
 
                     b.Property<string>("Categoria")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
-                    b.Property<double>("Costo")
+                    b.Property<double?>("Costo")
                         .HasColumnType("float");
 
                     b.Property<string>("Descripcion")
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Imagen")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ImagenURL")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
@@ -435,12 +444,6 @@ namespace WebApiPIATienda.Migrations
                     b.Property<int>("Cantidad")
                         .HasColumnType("int");
 
-                    b.Property<int>("DireccionId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("MetodoDePagoId")
-                        .HasColumnType("int");
-
                     b.Property<int>("Orden")
                         .HasColumnType("int");
 
@@ -454,10 +457,6 @@ namespace WebApiPIATienda.Migrations
                         .HasColumnType("float");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("DireccionId");
-
-                    b.HasIndex("MetodoDePagoId");
 
                     b.HasIndex("PedidoId");
 
@@ -674,27 +673,11 @@ namespace WebApiPIATienda.Migrations
 
             modelBuilder.Entity("WebApiPIATienda.Entidades.Pedido", b =>
                 {
-                    b.HasOne("WebApiPIATienda.Entidades.Direccion", "Direccion")
-                        .WithMany()
-                        .HasForeignKey("DireccionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("WebApiPIATienda.Entidades.MetodoDePago", "MetodoDePago")
-                        .WithMany()
-                        .HasForeignKey("MetodoDePagoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("WebApiPIATienda.Entidades.Usuario", "Usuario")
                         .WithMany("Pedidos")
                         .HasForeignKey("UsuarioId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("Direccion");
-
-                    b.Navigation("MetodoDePago");
 
                     b.Navigation("Usuario");
                 });
@@ -718,18 +701,6 @@ namespace WebApiPIATienda.Migrations
 
             modelBuilder.Entity("WebApiPIATienda.Entidades.ProductoPedido", b =>
                 {
-                    b.HasOne("WebApiPIATienda.Entidades.Direccion", "Direccion")
-                        .WithMany()
-                        .HasForeignKey("DireccionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("WebApiPIATienda.Entidades.MetodoDePago", "MetodoDePago")
-                        .WithMany()
-                        .HasForeignKey("MetodoDePagoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("WebApiPIATienda.Entidades.Pedido", "Pedido")
                         .WithMany("ProductosPedido")
                         .HasForeignKey("PedidoId")
@@ -741,10 +712,6 @@ namespace WebApiPIATienda.Migrations
                         .HasForeignKey("ProductoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("Direccion");
-
-                    b.Navigation("MetodoDePago");
 
                     b.Navigation("Pedido");
 

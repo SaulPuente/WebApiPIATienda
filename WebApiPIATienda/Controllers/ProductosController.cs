@@ -1,11 +1,15 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Xml.Linq;
 using WebApiPIATienda.DTOs;
+using WebApiPIATienda.DTOs.Pedido;
 using WebApiPIATienda.Entidades;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace WebApiPIATienda.Controllers
 {
@@ -15,11 +19,13 @@ namespace WebApiPIATienda.Controllers
     {
         private readonly ApplicationDbContext dbContext;
         private readonly IMapper mapper;
+        private readonly UserManager<IdentityUser> userManager;
 
-        public ProductosController(ApplicationDbContext context, IMapper mapper)
+        public ProductosController(ApplicationDbContext context, IMapper mapper, UserManager<IdentityUser> userManager)
         {
             this.dbContext = context;
             this.mapper = mapper;
+            this.userManager = userManager;
         }
 
         [HttpGet]
@@ -35,9 +41,6 @@ namespace WebApiPIATienda.Controllers
         public async Task<ActionResult<GetProductoDTO>> Get(int id)
         {
             var producto = await dbContext.Productos.FirstOrDefaultAsync(productoBD => productoBD.Id == id);
-            //.Include(tiendaoDB => tiendaoDB.AlumnoClase)
-            //.ThenInclude(alumnoClaseDB => alumnoClaseDB.Clase)
-            //.FirstOrDefaultAsync(alumnoBD => alumnoBD.Id == id);
 
             if (producto == null)
             {
@@ -45,6 +48,20 @@ namespace WebApiPIATienda.Controllers
             }
 
             return mapper.Map<GetProductoDTO>(producto);
+
+        }
+
+        [HttpGet("imagen/{id:int}")]
+        public async Task<ActionResult<ProductoImagenDTO>> GetImage(int id)
+        {
+            var producto = await dbContext.Productos.FirstOrDefaultAsync(productoBD => productoBD.Id == id);
+
+            if (producto == null)
+            {
+                return NotFound();
+            }
+
+            return mapper.Map<ProductoImagenDTO>(producto);
 
         }
 
@@ -66,6 +83,7 @@ namespace WebApiPIATienda.Controllers
 
         }
 
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "EsAdmin")]
         [HttpPost]
         public async Task<ActionResult> Post([FromBody] ProductoDTO productoDto)
         {
@@ -88,6 +106,7 @@ namespace WebApiPIATienda.Controllers
             return CreatedAtRoute("obtenerproducto", new { id = producto.Id }, productoDTO);
         }
 
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "EsAdmin")]
         [HttpPut("{id:int}")]
         public async Task<ActionResult> Put(ProductoDTO productoDTO, int id)
         {
@@ -105,6 +124,7 @@ namespace WebApiPIATienda.Controllers
             return NoContent();
         }
 
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "EsAdmin")]
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> Delete(int id)
         {
@@ -122,6 +142,7 @@ namespace WebApiPIATienda.Controllers
             return Ok();
         }
 
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "EsAdmin")]
         [HttpPatch("{id:int}")]
         public async Task<ActionResult> Patch(int id, JsonPatchDocument<ProductoPatchDTO> patchDocument)
         {
@@ -146,6 +167,39 @@ namespace WebApiPIATienda.Controllers
 
             await dbContext.SaveChangesAsync();
             return NoContent();
+        }
+
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        [HttpGet("/recomendacion")]
+        public async Task<ActionResult<List<GetProductoDTO>>> GetRecomendations()
+        {
+            var emailClaim = HttpContext.User.Claims.Where(claim => claim.Type == "email").FirstOrDefault();
+
+            var email = emailClaim.Value;
+
+            var user = await userManager.FindByEmailAsync(email);
+            var userId = user.Id;
+
+            var usuario = await dbContext.Usuarios.FirstOrDefaultAsync(usuarioDB => usuarioDB.Email == email);
+
+            if (usuario == null)
+            {
+                return NotFound();
+            }
+
+            var usuarioId = usuario.Id;
+
+            var pedidosHist = await dbContext.Pedidos.Where(x => x.UsuarioId == usuarioId).Select(x => x.Id).ToListAsync();
+            var ppHist = await dbContext.ProductosPedidos.Where(x => pedidosHist.Contains(x.PedidoId)).Select(x => x.ProductoId).ToListAsync();
+            var productosHist = await dbContext.Productos.Where(x => ppHist.Contains(x.Id)).Select(x => x.Id).ToListAsync();
+
+            var productos = dbContext.Productos.Where(x => ppHist.Contains(x.Id));
+            
+            var productosRand = productos.OrderBy(r => Guid.NewGuid()).Take(5);
+
+            //var productos = await dbContext.Productos.ToListAsync();
+
+            return mapper.Map<List<GetProductoDTO>>(productosRand);
         }
     }
 }

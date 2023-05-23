@@ -31,11 +31,13 @@ namespace WebApiPIATienda.Controllers
             this.userManager = userManager;
         }
 
-        [HttpGet]
         [HttpGet("/listadoCarrito")]
-        public async Task<ActionResult<List<Carrito>>> GetAll()
+        public async Task<ActionResult<List<CarritoDTOConProductos>>> GetAll()
         {
-            return await dbContext.Carritos.ToListAsync();
+            var carritos =  await dbContext.Carritos.Include(carritoDB => carritoDB.ProductosCarrito)
+                .ThenInclude(productoCarritoDB => productoCarritoDB.Producto).ToListAsync();
+
+            return mapper.Map<List<CarritoDTOConProductos>>(carritos);
         }
 
         [HttpGet("{id:int}", Name = "obtenerCarrito")]
@@ -57,7 +59,7 @@ namespace WebApiPIATienda.Controllers
             return mapper.Map<CarritoDTOConProductos>(carrito);
         }
 
-        [HttpGet("usuario/Carrito")]
+        [HttpGet]
         public async Task<ActionResult<CarritoDTOConProductos>> GetByUser()
         {
 

@@ -7,11 +7,11 @@ using Microsoft.AspNetCore.Identity;
 using System.Xml.Linq;
 using WebApiPIATienda.DTOs.MetodoDePago;
 using WebApiPIATienda.Entidades;
+using WebApiPIATienda.DTOs;
 
 namespace WebApiPIATienda.Controllers
 {
     [ApiController]
-    //[Route("usuarios/{usuarioId:int}/metodosdepago")]
     [Route("usuarios/metodosdepago")]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public class MetodosDePagoController : ControllerBase
@@ -84,6 +84,13 @@ namespace WebApiPIATienda.Controllers
             }
 
             var usuarioId = usuario.Id;
+
+            var existeMetodoDePago = await dbContext.MetodosDePago.AnyAsync(x => x.Bin == metodoDePagoCreacionDTO.Bin & x.UsuarioId == usuarioId);
+
+            if (existeMetodoDePago)
+            {
+                return BadRequest($"Ya existe el método de pago.");
+            }
 
             var metodoDePago = mapper.Map<MetodoDePago>(metodoDePagoCreacionDTO);
             metodoDePago.UsuarioId = usuarioId;

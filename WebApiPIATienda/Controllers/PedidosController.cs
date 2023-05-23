@@ -5,35 +5,47 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Asn1.Ocsp;
 using System.Xml.Linq;
-using WebApiPIATienda.DTOs.MetodoDePago;
 using WebApiPIATienda.DTOs.Pedido;
 using WebApiPIATienda.Entidades;
+using WebApiPIATienda.Servicios;
 
 namespace WebApiPIATienda.Controllers
 {
     [ApiController]
-    [Route("usuarios/pedidos")]
+    [Route("usuario/pedidos")]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public class PedidosController : ControllerBase
     {
         private readonly ApplicationDbContext dbContext;
         private readonly IMapper mapper;
         private readonly UserManager<IdentityUser> userManager;
+        private readonly IMailService mailService;
 
         public PedidosController(ApplicationDbContext context, IMapper mapper,
-            UserManager<IdentityUser> userManager)
+            UserManager<IdentityUser> userManager, IMailService mailService)
         {
             this.dbContext = context;
             this.mapper = mapper;
             this.userManager = userManager;
+            this.mailService = mailService;
         }
 
-        [HttpGet]
-        [HttpGet("/listadoPedidos")]
-        public async Task<ActionResult<List<Pedido>>> GetAll()
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "EsAdmin")]
+        [HttpGet("listadoPedidos")]
+        public async Task<ActionResult<List<PedidoDTOConProductos>>> GetAll()
         {
-            return await dbContext.Pedidos.ToListAsync();
+            var pedidos = await dbContext.Pedidos
+                .Include(pedidoDB => pedidoDB.ProductosPedido)
+                .ThenInclude(productoPedidoDB => productoPedidoDB.Producto).ToListAsync();
+
+            if (pedidos == null)
+            {
+                return NotFound();
+            }
+
+            return mapper.Map<List<PedidoDTOConProductos>>(pedidos);
         }
 
         [HttpGet("{id:int}", Name = "obtenerPedido")]
@@ -55,7 +67,7 @@ namespace WebApiPIATienda.Controllers
             return mapper.Map<PedidoDTOConProductos>(pedido);
         }
 
-        [HttpGet("usuario/pedidos")]
+        [HttpGet()]
         public async Task<ActionResult<List<PedidoDTOConProductos>>> GetByUser()
         {
 
@@ -78,7 +90,7 @@ namespace WebApiPIATienda.Controllers
             var pedidos = await dbContext.Pedidos
                 .Include(pedidoDB => pedidoDB.ProductosPedido)
                 .ThenInclude(productoPedidoDB => productoPedidoDB.Producto)
-                .Where(x => x.UsuarioId == usuarioId).ToListAsync(); ;
+                .Where(x => x.UsuarioId == usuarioId).ToListAsync();
 
             if (pedidos == null)
             {
@@ -166,11 +178,15 @@ namespace WebApiPIATienda.Controllers
                 await dbContext.SaveChangesAsync();
             }
 
-            var direccionId = direccion.Id;
-            var metodoDePagoId = metodoDePago.Id;
+            var direccionV = direccion.Calle + " " + direccion.NumExt + ", " + direccion.Colonia + ", C.P." + direccion.CodigoPostal + ", " 
+                + direccion.Ciudad + ", " + direccion.Estado + ", " + direccion.Pais;
+            var tarjeta = metodoDePago.Bin;
+            var exp = metodoDePago.Mes + "/" + metodoDePago.Año;
 
-            pedidoCreacionDTO.MetodoDePagoId = metodoDePagoId;
-            pedidoCreacionDTO.DireccionId = direccionId;
+            //pedidoCreacionDTO.DireccionId = direccion.Id;
+            //pedidoCreacionDTO.MetodoDePagoId = metodoDePago.Id;
+            //pedidoCreacionDTO.Tarjeta = tarjeta;
+            //pedidoCreacionDTO.Exp = exp;
 
             pedidoCreacionDTO.Subtotales = subtotales;
             var pedido = mapper.Map<Pedido>(pedidoCreacionDTO);
@@ -180,9 +196,9 @@ namespace WebApiPIATienda.Controllers
             pedido.Total = total;
 
             pedido.UsuarioId = usuarioId;
-            pedido.DireccionId = direccionId;
-            Console.WriteLine(direccion.Id);
-            pedido.MetodoDePagoId = metodoDePagoId;
+            pedido.Direccion = direccionV;
+            pedido.Tarjeta = tarjeta;
+            pedido.Exp = exp;
             dbContext.Add(pedido);
             await dbContext.SaveChangesAsync();
 
@@ -191,8 +207,20 @@ namespace WebApiPIATienda.Controllers
             return CreatedAtRoute("obtenerPedido", new { id = pedido.Id }, pedidoDTO);
         }
 
-        [HttpPut("{id:int}")]
-        public async Task<ActionResult> Put(int id, PedidoCreacionDTO pedidoCreacionDTO)
+        private void OrdenarPorProductos(Pedido pedido)
+        {
+            if (pedido.ProductosPedido != null)
+            {
+                for (int i = 0; i < pedido.ProductosPedido.Count; i++)
+                {
+                    pedido.ProductosPedido[i].Orden = i;
+                }
+            }
+        }
+
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "EsAdmin")]
+        [HttpPatch("{id:int}")]
+        public async Task<ActionResult> Patch(int id, JsonPatchDocument<PedidoPatchDTO> patchDocument)
         {
             var emailClaim = HttpContext.User.Claims.Where(claim => claim.Type == "email").FirstOrDefault();
 
@@ -210,158 +238,43 @@ namespace WebApiPIATienda.Controllers
 
             var usuarioId = usuario.Id;
 
-            var pedidoDB = await dbContext.Pedidos
-                .Include(pedidoDB => pedidoDB.ProductosPedido)
-                .ThenInclude(productoPedidoDB => productoPedidoDB.Producto)
-                .FirstOrDefaultAsync(x => x.Id == id);
+            if (patchDocument == null) { return BadRequest(); }
 
-            if (pedidoDB == null)
+            var pedidoDB = await dbContext.Pedidos.FirstOrDefaultAsync(x => x.Id == id);
+
+            if (pedidoDB == null) { return NotFound(); }
+
+            if (pedidoDB.UsuarioId != usuarioId)
             {
-                return NotFound();
+                return BadRequest("El pedido no pertenece al usuario.");
             }
 
-            var metodoDePago = await dbContext.MetodosDePago.FirstOrDefaultAsync(metodoDePagoBD => metodoDePagoBD.Id == pedidoCreacionDTO.MetodoDePagoId);
-            if (metodoDePago == null)
+            var pedidoDTO = mapper.Map<PedidoPatchDTO>(pedidoDB);
+
+            patchDocument.ApplyTo(pedidoDTO);
+
+            var isValid = TryValidateModel(pedidoDTO);
+
+            if (!isValid)
             {
-                return BadRequest("No existe el método de pago.");
+                return BadRequest(ModelState);
             }
 
-            var direccion = await dbContext.Direcciones.FirstOrDefaultAsync(direccionBD => direccionBD.Id == pedidoCreacionDTO.DireccionId);
-            if (direccion == null)
-            {
-                return BadRequest("No existe la dirección.");
-            }
+            mapper.Map(pedidoDTO, pedidoDB);
 
-            var productoId = 0;
-
-            for (int i = 0; i < pedidoCreacionDTO.ProductosIds.Count; i++)
-            {
-                productoId = pedidoCreacionDTO.ProductosIds[i];
-                var producto = await dbContext.Productos.FirstOrDefaultAsync(productoBD => productoBD.Id == productoId);
-
-
-                producto.Cantidad += pedidoCreacionDTO.Cantidades[i];
-                dbContext.Update(producto);
-                await dbContext.SaveChangesAsync();
-            }
-
-            if (pedidoCreacionDTO.ProductosIds == null)
-            {
-                return BadRequest("No se puede crear una pedido sin productos.");
-            }
-
-            var productosIds = await dbContext.Productos
-                .Where(productoBD => pedidoCreacionDTO.ProductosIds.Contains(productoBD.Id)).Select(x => x.Id).ToListAsync();
-
-            if (pedidoCreacionDTO.ProductosIds.Count != productosIds.Count)
-            {
-                return BadRequest("No existe uno de los productos enviados");
-            }
-
-            var total = 0.0;
-            var subtotal = 0.0;
-            productoId = 0;
-            var subtotales = new List<double>();
-
-            for (int i = 0; i < pedidoCreacionDTO.ProductosIds.Count; i++)
-            {
-                productoId = pedidoCreacionDTO.ProductosIds[i];
-                var producto = await dbContext.Productos.FirstOrDefaultAsync(productoBD => productoBD.Id == productoId);
-
-                if (producto.Cantidad < pedidoCreacionDTO.Cantidades[i])
-                {
-                    return BadRequest("No hay cantidad suficiente en el inventario.");
-                }
-
-                subtotal = pedidoCreacionDTO.Cantidades[i] * producto.Precio;
-                subtotales.Add(subtotal);
-                total += subtotal;
-
-                producto.Cantidad -= pedidoCreacionDTO.Cantidades[i];
-                dbContext.Update(producto);
-                await dbContext.SaveChangesAsync();
-            }
-
-            pedidoCreacionDTO.Subtotales = subtotales;
-
-            pedidoDB = mapper.Map(pedidoCreacionDTO, pedidoDB);
-
-            OrdenarPorProductos(pedidoDB);
-
-            pedidoDB.Total = total;
-            pedidoDB.DireccionId = direccion.Id;
-            pedidoDB.MetodoDePagoId = metodoDePago.Id;
-
-            //dbContext.Update(carritoDB);
             await dbContext.SaveChangesAsync();
+
+            var request = new MailRequest() { ToEmail = email, Subject = $"Estado del pedido {pedidoDB.Id}", Body = $"Estado: {pedidoDTO.Estado}" };
+            try
+            {
+                await mailService.SendEmailAsync(request);
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+
             return NoContent();
         }
-
-        //[HttpDelete("{id:int}")]
-        //public async Task<ActionResult> Delete(int id)
-        //{
-        //    var carrito = await dbContext.Carritos
-        //        .Include(carritoDB => carritoDB.ProductosCarrito)
-        //        .ThenInclude(productoCarritoDB => productoCarritoDB.Producto)
-        //        .FirstOrDefaultAsync(x => x.Id == id);
-
-        //    if (carrito == null)
-        //    {
-        //        return NotFound("El Recurso no fue encontrado.");
-        //    }
-
-        //    //var validateRelation = await dbContext.AlumnoClase.AnyAsync
-
-        //    //var productosCarritoIds = await dbContext.ProductosCarritos
-        //    //    .Where(productoCarritoBD => productoCarritoBD.CarritoId == id).Select(x => x.Id).ToListAsync();
-
-        //    //foreach (var productoCarritoId in productosCarritoIds) 
-        //    //{
-        //    //    dbContext.Remove(new ProductoCarrito() { Id = productoCarritoId });
-        //    //    await dbContext.SaveChangesAsync();
-        //    //}
-
-        //    dbContext.Remove(new Carrito() { Id = id });
-        //    await dbContext.SaveChangesAsync();
-
-        //    return Ok();
-        //}
-
-        private void OrdenarPorProductos(Pedido pedido)
-        {
-            if (pedido.ProductosPedido != null)
-            {
-                for (int i = 0; i < pedido.ProductosPedido.Count; i++)
-                {
-                    pedido.ProductosPedido[i].Orden = i;
-                }
-            }
-        }
-
-        //[HttpPatch("{id:int}")]
-        //public async Task<ActionResult> Patch(int id, JsonPatchDocument<ClasePatchDTO> patchDocument)
-        //{
-        //    if (patchDocument == null) { return BadRequest(); }
-
-        //    var claseDB = await dbContext.Clases.FirstOrDefaultAsync(x => x.Id == id);
-
-        //    if (claseDB == null) { return NotFound(); }
-
-        //    var claseDTO = mapper.Map<ClasePatchDTO>(claseDB);
-
-        //    patchDocument.ApplyTo(claseDTO);
-
-        //    var isValid = TryValidateModel(claseDTO);
-
-        //    if (!isValid)
-        //    {
-        //        return BadRequest(ModelState);
-        //    }
-
-        //    mapper.Map(claseDTO, claseDB);
-
-        //    await dbContext.SaveChangesAsync();
-        //    return NoContent();
-        //}
     }
 }

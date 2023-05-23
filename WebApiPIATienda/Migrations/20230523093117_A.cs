@@ -56,10 +56,12 @@ namespace WebApiPIATienda.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Nombre = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     Descripcion = table.Column<string>(type: "nvarchar(300)", maxLength: 300, nullable: false),
-                    Categoria = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Categoria = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     Cantidad = table.Column<int>(type: "int", nullable: false),
                     Precio = table.Column<double>(type: "float", nullable: false),
-                    Costo = table.Column<double>(type: "float", nullable: false)
+                    Costo = table.Column<double>(type: "float", nullable: true),
+                    ImagenURL = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Imagen = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -320,6 +322,30 @@ namespace WebApiPIATienda.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Pedidos",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UsuarioId = table.Column<int>(type: "int", nullable: false),
+                    Tarjeta = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Exp = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Direccion = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Total = table.Column<double>(type: "float", nullable: false),
+                    Estado = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Pedidos", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Pedidos_Usuarios_UsuarioId",
+                        column: x => x.UsuarioId,
+                        principalTable: "Usuarios",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ProductosCarritos",
                 columns: table => new
                 {
@@ -349,41 +375,6 @@ namespace WebApiPIATienda.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Pedidos",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    UsuarioId = table.Column<int>(type: "int", nullable: false),
-                    MetodoDePagoId = table.Column<int>(type: "int", nullable: false),
-                    DireccionId = table.Column<int>(type: "int", nullable: false),
-                    Total = table.Column<double>(type: "float", nullable: false),
-                    Estado = table.Column<string>(type: "nvarchar(max)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Pedidos", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Pedidos_Direcciones_DireccionId",
-                        column: x => x.DireccionId,
-                        principalTable: "Direcciones",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_Pedidos_MetodosDePago_MetodoDePagoId",
-                        column: x => x.MetodoDePagoId,
-                        principalTable: "MetodosDePago",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_Pedidos_Usuarios_UsuarioId",
-                        column: x => x.UsuarioId,
-                        principalTable: "Usuarios",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "ProductosPedidos",
                 columns: table => new
                 {
@@ -393,25 +384,11 @@ namespace WebApiPIATienda.Migrations
                     PedidoId = table.Column<int>(type: "int", nullable: false),
                     Cantidad = table.Column<int>(type: "int", nullable: false),
                     Subtotal = table.Column<double>(type: "float", nullable: false),
-                    Orden = table.Column<int>(type: "int", nullable: false),
-                    DireccionId = table.Column<int>(type: "int", nullable: false),
-                    MetodoDePagoId = table.Column<int>(type: "int", nullable: false)
+                    Orden = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_ProductosPedidos", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_ProductosPedidos_Direcciones_DireccionId",
-                        column: x => x.DireccionId,
-                        principalTable: "Direcciones",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_ProductosPedidos_MetodosDePago_MetodoDePagoId",
-                        column: x => x.MetodoDePagoId,
-                        principalTable: "MetodosDePago",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_ProductosPedidos_Pedidos_PedidoId",
                         column: x => x.PedidoId,
@@ -481,16 +458,6 @@ namespace WebApiPIATienda.Migrations
                 column: "UsuarioId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Pedidos_DireccionId",
-                table: "Pedidos",
-                column: "DireccionId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Pedidos_MetodoDePagoId",
-                table: "Pedidos",
-                column: "MetodoDePagoId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Pedidos_UsuarioId",
                 table: "Pedidos",
                 column: "UsuarioId");
@@ -504,16 +471,6 @@ namespace WebApiPIATienda.Migrations
                 name: "IX_ProductosCarritos_ProductoId",
                 table: "ProductosCarritos",
                 column: "ProductoId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ProductosPedidos_DireccionId",
-                table: "ProductosPedidos",
-                column: "DireccionId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ProductosPedidos_MetodoDePagoId",
-                table: "ProductosPedidos",
-                column: "MetodoDePagoId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ProductosPedidos_PedidoId",
@@ -554,6 +511,12 @@ namespace WebApiPIATienda.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
+                name: "Direcciones");
+
+            migrationBuilder.DropTable(
+                name: "MetodosDePago");
+
+            migrationBuilder.DropTable(
                 name: "ProductosCarritos");
 
             migrationBuilder.DropTable(
@@ -582,12 +545,6 @@ namespace WebApiPIATienda.Migrations
 
             migrationBuilder.DropTable(
                 name: "Proveedores");
-
-            migrationBuilder.DropTable(
-                name: "Direcciones");
-
-            migrationBuilder.DropTable(
-                name: "MetodosDePago");
 
             migrationBuilder.DropTable(
                 name: "Usuarios");

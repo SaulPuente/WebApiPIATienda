@@ -112,21 +112,21 @@ namespace WebApiPIATienda.Controllers
             //En los claim se pueden declarar cualquier variable, sin embargo, no debemos de declarar informacion
             //del cliente sensible como pudiera ser una Tarjeta de Credito o contraseña
 
+            var usuario = await userManager.FindByEmailAsync(credencialesUsuario.Email);
+            var claimsDB = await userManager.GetClaimsAsync(usuario);
+
+            var expiration = DateTime.UtcNow.AddMinutes(30);
+
             var claims = new List<Claim>
             {
                 new Claim("email", credencialesUsuario.Email),
-                new Claim("claimprueba", "Este es un claim de prueba")
+                new Claim("exp", expiration.ToString())
             };
-
-            var usuario = await userManager.FindByEmailAsync(credencialesUsuario.Email);
-            var claimsDB = await userManager.GetClaimsAsync(usuario);
 
             claims.AddRange(claimsDB);
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["keyjwt"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var expiration = DateTime.UtcNow.AddMinutes(30);
 
             var securityToken = new JwtSecurityToken(issuer: null, audience: null, claims: claims,
                 expires: expiration, signingCredentials: creds);

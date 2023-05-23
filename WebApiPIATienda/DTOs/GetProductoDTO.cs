@@ -9,5 +9,6 @@
         public int Cantidad { get; set; }
         public double Precio { get; set; }
         public double Costo { get; set; }
+        public string? ImagenURL { get; set; }
     }
 }

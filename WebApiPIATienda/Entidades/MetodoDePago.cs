@@ -9,20 +9,19 @@ namespace WebApiPIATienda.Entidades
     {
         public int Id { get; set; }
         [Required(ErrorMessage = "El campo {0} es requerido")]
-        [StringLength(maximumLength: 16, ErrorMessage = "El campo {0} debe contener 16 caracteres", MinimumLength= 16)]
+        [StringLength(maximumLength: 16, ErrorMessage = "El campo {0} debe contener 16 caracteres", MinimumLength = 16)]
         [EsNumerico]
-        [CreditCard]
         public string Bin { get; set; } = null!;
         [Required(ErrorMessage = "El campo {0} es requerido")]
-        [StringLength(maximumLength: 2, ErrorMessage = "El campo {0} solo puede tener hasta 2 caracteres", MinimumLength = 2)]
+        [StringLength(maximumLength: 2, ErrorMessage = "El campo {0} debe contener 2 caracteres", MinimumLength = 2)]
         [EsNumerico]
         public string Mes { get; set; } = null!;
         [Required(ErrorMessage = "El campo {0} es requerido")]
-        [StringLength(maximumLength: 2, ErrorMessage = "El campo {0} solo puede tener hasta 2 caracteres", MinimumLength = 2)]
+        [StringLength(maximumLength: 2, ErrorMessage = "El campo {0} debe contener 2 caracteres", MinimumLength = 2)]
         [EsNumerico]
         public string Año { get; set; } = null!;
         [Required(ErrorMessage = "El campo {0} es requerido")]
-        [StringLength(maximumLength: 10, ErrorMessage = "El campo {0} solo puede tener hasta 10 caracteres")]
+        [StringLength(maximumLength: 10, ErrorMessage = "El campo {0} sólo puede tener hasta 10 caracteres", MinimumLength = 10)]
         public string Tipo { get; set; } = null!;
         public int UsuarioId { get; set; }
         public Usuario Usuario { get; set; } = null!;
@@ -35,12 +34,28 @@ namespace WebApiPIATienda.Entidades
 
                 if (numA > 12 | numA < 0)
                 {
-                    yield return new ValidationResult("Mes incorrecto.");
+                    yield return new ValidationResult("Mes incorrecto.",
+                        new String[] { nameof(Mes) });
                 }
             }
             else
             {
-                yield return new ValidationResult("Este campo no puede estar vacío.");
+                yield return new ValidationResult("Este campo no puede estar vacío.",
+                        new String[] { nameof(Mes) });
+            }
+
+            if (!string.IsNullOrEmpty(Tipo))
+            {
+                if (Tipo != "credito" & Tipo != "crédito" & Tipo != "debito")
+                {
+                    yield return new ValidationResult("Tipo incorrecto.",
+                        new String[] { nameof(Tipo) });
+                }
+            }
+            else
+            {
+                yield return new ValidationResult("Este campo no puede estar vacío.",
+                        new String[] { nameof(Tipo) });
             }
         }
     }

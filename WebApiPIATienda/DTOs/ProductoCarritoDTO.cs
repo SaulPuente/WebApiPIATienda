@@ -11,5 +11,7 @@ namespace WebApiPIATienda.DTOs
         public string Categoria { get; set; }
         public int Cantidad { get; set; }
         public double Subtotal { get; set; }
+        public string? ImagenURL { get; set; }
+        public string? Imagen { get; set; }
     }
 }
