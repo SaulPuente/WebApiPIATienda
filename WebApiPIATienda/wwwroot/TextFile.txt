@@ -1,0 +1,4 @@
+﻿Registrando producto: Sabritas
+Registrando producto: Leche
+Registrando producto: Agua
+Registrando producto: S

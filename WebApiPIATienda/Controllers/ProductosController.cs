@@ -10,6 +10,8 @@ using WebApiPIATienda.DTOs.Pedido;
 using WebApiPIATienda.Entidades;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Logging;
+
 
 namespace WebApiPIATienda.Controllers
 {
@@ -20,12 +22,17 @@ namespace WebApiPIATienda.Controllers
         private readonly ApplicationDbContext dbContext;
         private readonly IMapper mapper;
         private readonly UserManager<IdentityUser> userManager;
+        private readonly ILogger<ProductosController> logger;
+        private readonly IWebHostEnvironment webHostEnvironment;
 
-        public ProductosController(ApplicationDbContext context, IMapper mapper, UserManager<IdentityUser> userManager)
+
+        public ProductosController(ApplicationDbContext context, IMapper mapper, UserManager<IdentityUser> userManager, ILogger<ProductosController> logger, IWebHostEnvironment webHostEnvironment)
         {
             this.dbContext = context;
             this.mapper = mapper;
             this.userManager = userManager;
+            this.logger = logger;
+            this.webHostEnvironment = webHostEnvironment;
         }
 
         [HttpGet]
@@ -102,6 +109,18 @@ namespace WebApiPIATienda.Controllers
             await dbContext.SaveChangesAsync();
 
             var productoDTO = mapper.Map<GetProductoDTO>(producto);
+
+            string logFilePath = Path.Combine(webHostEnvironment.WebRootPath, "TextFile.txt");
+            string logMessage = $"Registrando producto: {productoDto.Nombre}";
+            
+            using (StreamWriter writer = new StreamWriter(logFilePath, true))
+            {
+                await writer.WriteLineAsync(logMessage);
+            }
+
+            logger.LogInformation($"Registrando producto: {productoDto.Nombre}");
+
+
 
             return CreatedAtRoute("obtenerproducto", new { id = producto.Id }, productoDTO);
         }

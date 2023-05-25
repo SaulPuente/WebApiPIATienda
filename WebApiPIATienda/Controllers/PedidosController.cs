@@ -10,6 +10,7 @@ using System.Xml.Linq;
 using WebApiPIATienda.DTOs.Pedido;
 using WebApiPIATienda.Entidades;
 using WebApiPIATienda.Servicios;
+using Microsoft.Extensions.Logging;
 
 namespace WebApiPIATienda.Controllers
 {
@@ -22,29 +23,34 @@ namespace WebApiPIATienda.Controllers
         private readonly IMapper mapper;
         private readonly UserManager<IdentityUser> userManager;
         private readonly IMailService mailService;
+        private readonly ILogger<PedidosController> logger;
 
         public PedidosController(ApplicationDbContext context, IMapper mapper,
-            UserManager<IdentityUser> userManager, IMailService mailService)
+            UserManager<IdentityUser> userManager, IMailService mailService, ILogger<PedidosController> logger)
         {
             this.dbContext = context;
             this.mapper = mapper;
             this.userManager = userManager;
             this.mailService = mailService;
+            this.logger = logger;
         }
 
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Policy = "EsAdmin")]
         [HttpGet("listadoPedidos")]
         public async Task<ActionResult<List<PedidoDTOConProductos>>> GetAll()
         {
+            logger.LogInformation("Método GetAll() iniciado.");
             var pedidos = await dbContext.Pedidos
                 .Include(pedidoDB => pedidoDB.ProductosPedido)
                 .ThenInclude(productoPedidoDB => productoPedidoDB.Producto).ToListAsync();
 
             if (pedidos == null)
             {
+                logger.LogWarning("No se encontraron pedidos.");
                 return NotFound();
             }
 
+            logger.LogInformation("Se encontraron {Cantidad} pedidos.", pedidos.Count);
             return mapper.Map<List<PedidoDTOConProductos>>(pedidos);
         }
 
@@ -203,6 +209,7 @@ namespace WebApiPIATienda.Controllers
             await dbContext.SaveChangesAsync();
 
             var pedidoDTO = mapper.Map<PedidoDTO>(pedido);
+            
 
             return CreatedAtRoute("obtenerPedido", new { id = pedido.Id }, pedidoDTO);
         }

@@ -9,6 +9,8 @@ using System.Text;
 using WebApiPIATienda.Filtros;
 using WebApiPIATienda.Middlewares;
 using WebApiPIATienda.Servicios;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace WebApiPIATienda
 {
@@ -87,6 +89,11 @@ namespace WebApiPIATienda
             services.AddIdentity<IdentityUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
+
+            services.AddLogging(loggingBuilder =>
+            {
+                loggingBuilder.AddConsole(); // Agrega la salida a la consola (opcional)
+            });
 
             services.AddAuthorization(opciones =>
             {
